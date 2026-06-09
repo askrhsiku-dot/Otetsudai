@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="おてつだい">
+<title>おてつだいひょう</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: 'Hiragino Maru Gothic ProN', 'BIZ UDGothic', sans-serif;
+    background: linear-gradient(135deg, #fff9f0 0%, #fff0fa 50%, #f0f4ff 100%);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  .bubble1 { position: fixed; top: -60px; right: -60px; width: 200px; height: 200px; border-radius: 50%; background: rgba(255,182,193,0.2); pointer-events: none; z-index: 0; }
+  .bubble2 { position: fixed; bottom: -80px; left: -60px; width: 260px; height: 260px; border-radius: 50%; background: rgba(176,224,230,0.18); pointer-events: none; z-index: 0; }
+
+  #app { position: relative; z-index: 1; max-width: 480px; margin: 0 auto; padding: 16px 12px 80px; }
+
+  /* Header */
+  .header { text-align: center; margin-bottom: 16px; }
+  .header .star { font-size: 32px; margin-bottom: 2px; }
+  .header h1 { font-size: 20px; font-weight: 900; color: #d4608c; letter-spacing: 2px; }
+
+  /* Kid tabs */
+  .kid-tabs { display: flex; gap: 8px; margin-bottom: 16px; overflow-x: auto; padding-bottom: 4px; }
+  .kid-tab {
+    padding: 8px 18px; border-radius: 20px; border: none; cursor: pointer;
+    font-family: inherit; font-weight: 800; font-size: 14px; flex-shrink: 0;
+    background: white; color: #888;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.06); transition: all 0.2s;
+  }
+  .kid-tab.active { color: white; }
+  .kid-tab-add {
+    padding: 8px 14px; border-radius: 20px; border: 2px dashed #ddd;
+    background: white; color: #aaa; cursor: pointer; font-family: inherit;
+    font-weight: 700; font-size: 14px; flex-shrink: 0;
+  }
+
+  /* Empty state */
+  .empty-state {
+    background: white; border-radius: 20px; padding: 24px;
+    text-align: center; box-shadow: 0 4px 16px rgba(0,0,0,0.06); margin-bottom: 16px;
+  }
+  .empty-state .icon { font-size: 40px; margin-bottom: 8px; }
+  .empty-state p { color: #aaa; font-size: 14px; margin-bottom: 16px; }
+
+  /* Add kid form */
+  .add-kid-form {
+    background: white; border-radius: 20px; padding: 20px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.12); margin-bottom: 16px;
+    border: 2px solid #f0e0ff; display: none;
+  }
+  .add-kid-form.show { display: block; }
+  .add-kid-form label { font-weight: 800; font-size: 14px; color: #8b6fa8; display: block; margin-bottom: 12px; }
+  .add-kid-form .row { display: flex; gap: 8px; }
+  .add-kid-form input {
+    flex: 1; padding: 10px 14px; border-radius: 12px;
+    border: 2px solid #f0e0ff; font-family: inherit; font-size: 14px; outline: none;
+  }
+
+  /* Money display */
+  .money-card {
+    border-radius: 24px; padding: 18px 24px; margin-bottom: 16px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .money-item { flex: 1; text-align: center; }
+  .money-label { font-size: 11px; color: rgba(255,255,255,0.85); letter-spacing: 1px; margin-bottom: 4px; }
+  .money-amount { font-size: 30px; font-weight: 900; color: white; line-height: 1; }
+  .money-divider { width: 1px; height: 48px; background: rgba(255,255,255,0.3); }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+  .tab {
+    flex: 1; padding: 9px 0; border-radius: 16px; border: none; cursor: pointer;
+    font-family: inherit; font-weight: 700; font-size: 12px;
+    background: white; color: #aaa;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05); transition: all 0.2s;
+  }
+  .tab.active { color: white; }
+
+  /* Date picker */
+  .date-btn {
+    width: 100%; padding: 11px 16px; border-radius: 16px;
+    background: white; border: 2px solid #f0e0ff;
+    font-family: inherit; font-weight: 700; font-size: 14px; color: #8b6fa8;
+    cursor: pointer; display: flex; align-items: center; justify-content: space-between;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 6px;
+  }
+  .date-dropdown {
+    background: white; border-radius: 16px; margin-bottom: 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.1); max-height: 200px;
+    overflow-y: auto; border: 2px solid #f0e0ff; display: none;
+  }
+  .date-dropdown.show { display: block; }
+  .date-option {
+    padding: 11px 16px; cursor: pointer;
+    color: #5a5a7a; font-weight: 500; font-size: 14px;
+    border-bottom: 1px solid #f5f0fa;
+  }
+  .date-option.selected { background: #f8f0ff; color: #c77dff; font-weight: 800; }
+  .date-option:hover { background: #faf5ff; }
+
+  /* Section */
+  .section { margin-bottom: 14px; }
+  .section-title { font-size: 12px; font-weight: 800; color: #8b6fa8; letter-spacing: 1px; margin-bottom: 6px; padding-left: 4px; }
+  .section-body { background: white; border-radius: 20px; box-shadow: 0 4px 16px rgba(0,0,0,0.06); overflow: hidden; }
+
+  /* Task row */
+  .task-row {
+    display: flex; align-items: center; padding: 12px 14px;
+    border-bottom: 1px solid #f5f0fa; cursor: pointer; gap: 10px;
+    background: white; transition: background 0.2s; user-select: none;
+  }
+  .task-row.checked { background: #fef8ff; }
+  .task-row:last-child { border-bottom: none; }
+  .check-box {
+    width: 26px; height: 26px; border-radius: 9px; flex-shrink: 0;
+    background: #f0eef8; display: flex; align-items: center; justify-content: center;
+    font-size: 14px; color: white; font-weight: 900; transition: all 0.2s;
+  }
+  .task-emoji { font-size: 18px; flex-shrink: 0; }
+  .task-label {
+    flex: 1; min-width: 0; font-size: 13px; font-weight: 700;
+    color: #5a5a7a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    transition: all 0.2s;
+  }
+  .task-row.checked .task-label { color: #c77dff; text-decoration: line-through; }
+  .task-yen { font-size: 12px; font-weight: 800; color: #c0b8d8; flex-shrink: 0; }
+  .task-row.checked .task-yen { color: #ff8fab; }
+  .task-total {
+    color: white; border-radius: 10px; padding: 3px 9px;
+    font-size: 11px; font-weight: 800; flex-shrink: 0; display: none;
+  }
+  .task-row.checked .task-total { display: block; }
+
+  /* History */
+  .year-nav {
+    background: white; border-radius: 20px; padding: 14px 16px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.06); margin-bottom: 14px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .year-btn {
+    background: #f5f0ff; border: none; border-radius: 12px; width: 36px; height: 36px;
+    font-size: 18px; cursor: pointer; color: #c77dff;
+  }
+  .year-label { font-weight: 900; font-size: 15px; color: #5a5a8a; }
+  .month-grid { background: white; border-radius: 20px; padding: 16px; box-shadow: 0 4px 16px rgba(0,0,0,0.06); margin-bottom: 14px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .month-cell {
+    border-radius: 14px; padding: 11px 6px; text-align: center;
+    background: #fafafa; border: 2px solid #f0f0f8;
+  }
+  .month-cell.has-data { background: #fff9f0; }
+  .month-cell.current { border: none; }
+  .month-cell-label { font-size: 11px; font-weight: 700; color: #a0a0c0; margin-bottom: 3px; }
+  .month-cell.current .month-cell-label { color: rgba(255,255,255,0.9); }
+  .month-cell-amount { font-size: 16px; font-weight: 900; color: #ccc; }
+  .month-cell.has-data .month-cell-amount { color: #d4608c; }
+  .month-cell.current .month-cell-amount { color: white; }
+  .year-total {
+    border-radius: 20px; padding: 16px 24px; text-align: center;
+  }
+  .year-total-label { font-size: 12px; color: #8b6fa8; margin-bottom: 4px; }
+  .year-total-amount { font-size: 34px; font-weight: 900; color: #8b35af; }
+
+  /* Settings */
+  .settings-card { background: white; border-radius: 20px; padding: 20px; box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
+  .settings-title { font-weight: 800; font-size: 14px; color: #8b6fa8; margin-bottom: 16px; }
+  .kid-item {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+    padding: 10px 14px; border-radius: 14px; background: #faf8ff; border: 2px solid #f0e8ff;
+  }
+  .kid-avatar {
+    width: 32px; height: 32px; border-radius: 10px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; color: white; font-weight: 900;
+  }
+  .kid-name-text { flex: 1; font-weight: 700; font-size: 14px; color: #5a5a7a; }
+  .kid-edit-input {
+    flex: 1; padding: 6px 10px; border-radius: 10px;
+    border: 2px solid #f0e0ff; font-family: inherit; font-size: 14px; outline: none;
+  }
+  .btn-edit { background: #f0e8ff; color: #c77dff; border: none; border-radius: 10px; padding: 6px 12px; font-family: inherit; font-weight: 700; font-size: 12px; cursor: pointer; }
+  .btn-delete { background: #fff0f0; color: #ff8080; border: none; border-radius: 10px; padding: 6px 10px; font-family: inherit; font-size: 12px; cursor: pointer; }
+  .btn-ok { color: white; border: none; border-radius: 10px; padding: 6px 12px; font-family: inherit; font-weight: 700; font-size: 13px; cursor: pointer; }
+  .btn-cancel { background: #eee; color: #888; border: none; border-radius: 10px; padding: 6px 10px; font-family: inherit; font-size: 13px; cursor: pointer; }
+  .btn-add-kid {
+    width: 100%; padding: 12px; border-radius: 14px;
+    border: 2px dashed #ddd; background: white; color: #bbb;
+    font-family: inherit; font-weight: 700; font-size: 14px; cursor: pointer; margin-top: 4px;
+  }
+  .divider { border-top: 2px solid #f0f0f8; margin: 20px 0; }
+  .btn-primary {
+    color: white; border: none; border-radius: 16px; padding: 12px 28px;
+    font-family: inherit; font-weight: 800; font-size: 14px; cursor: pointer;
+  }
+  .btn-reset {
+    background: white; color: #aaa; border: 2px dashed #ddd;
+    border-radius: 14px; padding: 12px 24px;
+    font-family: inherit; font-weight: 700; font-size: 13px; cursor: pointer; margin-right: 8px;
+  }
+  .btn-reset.confirm { background: #ff6b6b; color: white; border: none; box-shadow: 0 4px 12px rgba(255,107,107,0.3); }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="bubble1"></div>
+<div class="bubble2"></div>
+
+<div id="app">
+  <!-- Header -->
+  <div class="header">
+    <div class="star">⭐</div>
+    <h1>おてつだいひょう</h1>
+  </div>
+
+  <!-- Kid tabs -->
+  <div class="kid-tabs" id="kidTabs"></div>
+
+  <!-- Empty state -->
+  <div class="empty-state hidden" id="emptyState">
+    <div class="icon">👦👧</div>
+    <p>まずお子さんの名前を登録してね！</p>
+    <button class="btn-primary" id="emptyAddBtn">なまえをついか</button>
+  </div>
+
+  <!-- Add kid form -->
+  <div class="add-kid-form" id="addKidForm">
+    <label>👶 なまえをにゅうりょく</label>
+    <div class="row">
+      <input type="text" id="newKidName" placeholder="なまえ">
+      <button class="btn-ok" id="addKidOk">OK</button>
+      <button class="btn-cancel" id="addKidCancel">✕</button>
+    </div>
+  </div>
+
+  <!-- Main content (shown when kid is selected) -->
+  <div id="mainContent" class="hidden">
+    <!-- Money card -->
+    <div class="money-card" id="moneyCard">
+      <div class="money-item">
+        <div class="money-label" id="moneyDayLabel">きょうのごほうび</div>
+        <div class="money-amount" id="moneyDay">¥0</div>
+      </div>
+      <div class="money-divider"></div>
+      <div class="money-item">
+        <div class="money-label" id="moneyMonthLabel">今月のおこづかい</div>
+        <div class="money-amount" id="moneyMonth">¥0</div>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab active" id="tabToday" onclick="switchTab('today')">📋 きょう</button>
+      <button class="tab" id="tabHistory" onclick="switchTab('history')">📅 れきし</button>
+      <button class="tab" id="tabSettings" onclick="switchTab('settings')">⚙️ せってい</button>
+    </div>
+
+    <!-- TODAY VIEW -->
+    <div id="viewToday">
+      <button class="date-btn" id="datePicker" onclick="toggleDatePicker()">
+        <span id="dateLabel">📅 </span>
+        <span style="color:#ccc">▼</span>
+      </button>
+      <div class="date-dropdown" id="dateDropdown"></div>
+
+      <div class="section">
+        <div class="section-title">🌟 ひとりでおてつだい</div>
+        <div class="section-body" id="soloTasks"></div>
+      </div>
+      <div class="section">
+        <div class="section-title">🤝 いっしょにおてつだい</div>
+        <div class="section-body" id="togetherTasks"></div>
+      </div>
+    </div>
+
+    <!-- HISTORY VIEW -->
+    <div id="viewHistory" class="hidden">
+      <div class="year-nav">
+        <button class="year-btn" onclick="changeYear(-1)">‹</button>
+        <div class="year-label" id="yearLabel"></div>
+        <button class="year-btn" onclick="changeYear(1)">›</button>
+      </div>
+      <div class="month-grid" id="monthGrid"></div>
+      <div class="year-total" id="yearTotal">
+        <div class="year-total-label" id="yearTotalLabel"></div>
+        <div class="year-total-amount" id="yearTotalAmount"></div>
+      </div>
+    </div>
+
+    <!-- SETTINGS VIEW -->
+    <div id="viewSettings" class="hidden">
+      <div class="settings-card">
+        <div class="settings-title">👦 こどもリスト</div>
+        <div id="kidList"></div>
+        <button class="btn-add-kid" onclick="showAddKid()">＋ こどもをついか</button>
+        <div class="divider"></div>
+        <div class="settings-title">🔄 リセット</div>
+        <button class="btn-reset" id="resetBtn" onclick="handleReset()">今月のきろくをリセット</button>
+        <button class="btn-cancel hidden" id="resetCancelBtn" onclick="cancelReset()">やめる</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const TASKS = [
+  { id: 1, emoji: "🛁", label: "おふろそうじ", yen: 30, type: "solo" },
+  { id: 2, emoji: "🧹", label: "そうじきをかける", yen: 30, type: "solo" },
+  { id: 3, emoji: "🧺", label: "せんたくものをほす", yen: 30, type: "solo" },
+  { id: 4, emoji: "👕", label: "せんたくをたたむ", yen: 20, type: "solo" },
+  { id: 5, emoji: "🧽", label: "しょっきをあらう", yen: 20, type: "solo" },
+  { id: 6, emoji: "🍳", label: "りょうりをつくる", yen: 20, type: "solo" },
+  { id: 7, emoji: "🧺", label: "せんたくものをとりこむ", yen: 10, type: "solo" },
+  { id: 8, emoji: "🍽️", label: "おさらをならべる", yen: 10, type: "solo" },
+  { id: 9, emoji: "🧺", label: "せんたくものをほす", yen: 10, type: "together" },
+  { id: 10, emoji: "🧺", label: "せんたくものをとりこむ", yen: 10, type: "together" },
+  { id: 11, emoji: "👕", label: "せんたくをたたむ", yen: 10, type: "together" },
+  { id: 12, emoji: "🧽", label: "おさらをあらう", yen: 10, type: "together" },
+];
+
+const GRADIENTS = [
+  ["#ff8fab","#c77dff"],
+  ["#74c7ec","#89b4fa"],
+  ["#a6e3a1","#94e2d5"],
+  ["#fab387","#f38ba8"],
+  ["#cba6f7","#89dceb"],
+];
+
+const SCHOOL_YEAR_MONTHS = [4,5,6,7,8,9,10,11,12,1,2,3];
+const WEEKDAYS = ["日","月","火","水","木","金","土"];
+
+let state = { kids: [], activeKidId: null };
+let selectedDate = toDateStr(new Date());
+let schoolYear = getSchoolYear(new Date());
+let currentTab = "today";
+let resetConfirm = false;
+let editingKidId = null;
+
+function load() {
+  try {
+    const saved = localStorage.getItem("otetsudai_v3");
+    if (saved) state = JSON.parse(saved);
+  } catch {}
+}
+
+function save() {
+  try { localStorage.setItem("otetsudai_v3", JSON.stringify(state)); } catch {}
+}
+
+function toDateStr(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,"0");
+  const dd = String(d.getDate()).padStart(2,"0");
+  return `${y}-${m}-${dd}`;
+}
+
+function getSchoolYear(d) {
+  return d.getMonth()+1 >= 4 ? d.getFullYear() : d.getFullYear()-1;
+}
+
+function formatLabel(dateStr) {
+  const d = new Date(dateStr + "T00:00:00");
+  return `${d.getMonth()+1}/${d.getDate()}(${WEEKDAYS[d.getDay()]})`;
+}
+
+function getActiveKid() {
+  return state.kids.find(k => k.id === state.activeKidId);
+}
+
+function getGradient(kid) {
+  const idx = (kid.colorIndex ?? 0) % GRADIENTS.length;
+  return GRADIENTS[idx];
+}
+
+function calcDayTotal(checks) {
+  return TASKS.filter(t => checks?.[t.id]).reduce((s,t) => s+t.yen, 0);
+}
+
+function getDatesInMonth(year, month) {
+  const days = new Date(year, month, 0).getDate();
+  const dates = [];
+  for (let d=1; d<=days; d++) {
+    dates.push(`${year}-${String(month).padStart(2,"0")}-${String(d).padStart(2,"0")}`);
+  }
+  return dates;
+}
+
+function getMonthTotal(kid, year, month) {
+  return getDatesInMonth(year, month).reduce((s,d) => s + calcDayTotal(kid?.checks?.[d]||{}), 0);
+}
+
+function getAvailableDates() {
+  const dates = [];
+  const start = new Date("2025-06-01T00:00:00");
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  let cur = new Date(today);
+  while (cur >= start) {
+    dates.push(toDateStr(cur));
+    cur.setDate(cur.getDate()-1);
+  }
+  return dates;
+}
+
+// ---- RENDER ----
+
+function render() {
+  const today = new Date();
+  const todayStr = toDateStr(today);
+  const kid = getActiveKid();
+
+  // Kid tabs
+  const tabsEl = document.getElementById("kidTabs");
+  tabsEl.innerHTML = "";
+  state.kids.forEach((k, i) => {
+    const g = getGradient(k);
+    const isActive = k.id === state.activeKidId;
+    const btn = document.createElement("button");
+    btn.className = "kid-tab" + (isActive ? " active" : "");
+    btn.textContent = k.name;
+    if (isActive) btn.style.background = `linear-gradient(135deg,${g[0]},${g[1]})`;
+    btn.onclick = () => { state.activeKidId = k.id; save(); render(); };
+    tabsEl.appendChild(btn);
+  });
+  const addTab = document.createElement("button");
+  addTab.className = "kid-tab-add";
+  addTab.textContent = "＋ ついか";
+  addTab.onclick = showAddKid;
+  tabsEl.appendChild(addTab);
+
+  // Empty state
+  const emptyState = document.getElementById("emptyState");
+  const mainContent = document.getElementById("mainContent");
+  if (state.kids.length === 0) {
+    emptyState.classList.remove("hidden");
+    mainContent.classList.add("hidden");
+    return;
+  }
+  emptyState.classList.add("hidden");
+  mainContent.classList.remove("hidden");
+
+  if (!kid) return;
+
+  // Money card
+  const g = getGradient(kid);
+  const moneyCard = document.getElementById("moneyCard");
+  moneyCard.style.background = `linear-gradient(135deg,${g[0]},${g[1]})`;
+  moneyCard.style.boxShadow = `0 8px 28px ${g[0]}55`;
+
+  const dayChecks = kid.checks?.[selectedDate] || {};
+  const dayTotal = calcDayTotal(dayChecks);
+  document.getElementById("moneyDayLabel").textContent = formatLabel(selectedDate) + " のごほうび";
+  document.getElementById("moneyDay").textContent = `¥${dayTotal}`;
+
+  const curMonth = today.getMonth()+1;
+  const curYear = today.getFullYear();
+  const monthTotal = getMonthTotal(kid, curYear, curMonth);
+  document.getElementById("moneyMonthLabel").textContent = `${curMonth}月のおこづかい`;
+  document.getElementById("moneyMonth").textContent = `¥${monthTotal}`;
+
+  // Tab buttons
+  ["Today","History","Settings"].forEach(name => {
+    const btn = document.getElementById("tab"+name);
+    const tabId = name.toLowerCase();
+    if (currentTab === tabId) {
+      btn.classList.add("active");
+      btn.style.background = `linear-gradient(135deg,${g[0]},${g[1]})`;
+      btn.style.boxShadow = `0 4px 12px ${g[0]}55`;
+    } else {
+      btn.classList.remove("active");
+      btn.style.background = "white";
+      btn.style.boxShadow = "0 2px 8px rgba(0,0,0,0.05)";
+    }
+  });
+
+  // Show correct view
+  document.getElementById("viewToday").classList.toggle("hidden", currentTab !== "today");
+  document.getElementById("viewHistory").classList.toggle("hidden", currentTab !== "history");
+  document.getElementById("viewSettings").classList.toggle("hidden", currentTab !== "settings");
+
+  if (currentTab === "today") renderToday(kid, g, dayChecks, dayTotal);
+  if (currentTab === "history") renderHistory(kid, g);
+  if (currentTab === "settings") renderSettings(kid, g);
+}
+
+function renderToday(kid, g, dayChecks, dayTotal) {
+  const todayStr = toDateStr(new Date());
+
+  // Date label
+  document.getElementById("dateLabel").textContent = `📅 ${selectedDate === todayStr ? "⭐ きょう " : ""}${formatLabel(selectedDate)}`;
+
+  // Date dropdown
+  const dropdown = document.getElementById("dateDropdown");
+  if (dropdown.innerHTML === "") {
+    const dates = getAvailableDates();
+    dropdown.innerHTML = dates.map(d => `
+      <div class="date-option ${d === selectedDate ? 'selected' : ''}" onclick="selectDate('${d}')">
+        ${d === todayStr ? "⭐ きょう　" : ""}${formatLabel(d)}
+      </div>
+    `).join("");
+  }
+
+  // Render tasks
+  ["solo","together"].forEach(type => {
+    const el = document.getElementById(type === "solo" ? "soloTasks" : "togetherTasks");
+    const tasks = TASKS.filter(t => t.type === type);
+    el.innerHTML = tasks.map(task => {
+      const checked = !!dayChecks[task.id];
+      return `
+        <div class="task-row ${checked ? 'checked' : ''}" onclick="toggleTask(${task.id})">
+          <div class="check-box" style="${checked ? `background:linear-gradient(135deg,${g[0]},${g[1]});box-shadow:0 3px 8px ${g[0]}66` : ''}">
+            ${checked ? "✓" : ""}
+          </div>
+          <div class="task-emoji">${task.emoji}</div>
+          <div class="task-label">${task.label}</div>
+          <div class="task-yen">+¥${task.yen}</div>
+          <div class="task-total" style="background:linear-gradient(135deg,${g[0]},${g[1]});box-shadow:0 2px 6px ${g[0]}55">¥${dayTotal}</div>
+        </div>
+      `;
+    }).join("");
+  });
+}
+
+function renderHistory(kid, g) {
+  document.getElementById("yearLabel").textContent = `${schoolYear}年度`;
+
+  const today = new Date();
+  const curMonth = today.getMonth()+1;
+  const curYear = today.getFullYear();
+
+  const grid = document.getElementById("monthGrid");
+  grid.innerHTML = SCHOOL_YEAR_MONTHS.map(m => {
+    const y = m >= 4 ? schoolYear : schoolYear+1;
+    const total = getMonthTotal(kid, y, m);
+    const isCurrent = m === curMonth && y === curYear;
+    const hasData = total > 0;
+    let style = "";
+    let cls = "month-cell";
+    if (isCurrent) {
+      style = `background:linear-gradient(135deg,${g[0]},${g[1]});`;
+      cls += " current";
+    } else if (hasData) {
+      cls += " has-data";
+    }
+    return `
+      <div class="${cls}" style="${style}">
+        <div class="month-cell-label">${m}月</div>
+        <div class="month-cell-amount">¥${total}</div>
+      </div>
+    `;
+  }).join("");
+
+  const yearTotalAmount = SCHOOL_YEAR_MONTHS.reduce((s,m) => {
+    const y = m>=4?schoolYear:schoolYear+1;
+    return s + getMonthTotal(kid,y,m);
+  }, 0);
+
+  const yearTotalEl = document.getElementById("yearTotal");
+  yearTotalEl.style.background = `linear-gradient(135deg,${g[0]}44,${g[1]}44)`;
+  yearTotalEl.style.border = `2px solid ${g[0]}44`;
+  document.getElementById("yearTotalLabel").textContent = `${schoolYear}年度 ごうけい`;
+  document.getElementById("yearTotalAmount").textContent = `¥${yearTotalAmount}`;
+}
+
+function renderSettings(kid, g) {
+  const list = document.getElementById("kidList");
+  list.innerHTML = state.kids.map((k, i) => {
+    const kg = getGradient(k);
+    const isEditing = editingKidId === k.id;
+    return `
+      <div class="kid-item">
+        <div class="kid-avatar" style="background:linear-gradient(135deg,${kg[0]},${kg[1]})">${k.name[0]}</div>
+        ${isEditing ? `
+          <input class="kid-edit-input" id="editInput_${k.id}" value="${k.name}">
+          <button class="btn-ok" style="background:linear-gradient(135deg,${g[0]},${g[1]})" onclick="saveKidName('${k.id}')">OK</button>
+          <button class="btn-cancel" onclick="cancelEdit()">✕</button>
+        ` : `
+          <span class="kid-name-text">${k.name}</span>
+          <button class="btn-edit" onclick="startEdit('${k.id}','${k.name}')">へんしゅう</button>
+          <button class="btn-delete" onclick="deleteKid('${k.id}')">✕</button>
+        `}
+      </div>
+    `;
+  }).join("");
+}
+
+// ---- ACTIONS ----
+
+function toggleTask(taskId) {
+  const kid = getActiveKid();
+  if (!kid) return;
+  if (!kid.checks) kid.checks = {};
+  if (!kid.checks[selectedDate]) kid.checks[selectedDate] = {};
+  kid.checks[selectedDate][taskId] = !kid.checks[selectedDate][taskId];
+  save();
+  render();
+}
+
+function selectDate(dateStr) {
+  selectedDate = dateStr;
+  document.getElementById("dateDropdown").innerHTML = "";
+  document.getElementById("dateDropdown").classList.remove("show");
+  render();
+}
+
+function toggleDatePicker() {
+  const dd = document.getElementById("dateDropdown");
+  const isOpen = dd.classList.contains("show");
+  if (isOpen) {
+    dd.classList.remove("show");
+  } else {
+    dd.innerHTML = "";
+    const todayStr = toDateStr(new Date());
+    const dates = getAvailableDates();
+    dd.innerHTML = dates.map(d => `
+      <div class="date-option ${d===selectedDate?'selected':''}" onclick="selectDate('${d}')">
+        ${d===todayStr?"⭐ きょう　":""}${formatLabel(d)}
+      </div>
+    `).join("");
+    dd.classList.add("show");
+  }
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  resetConfirm = false;
+  render();
+}
+
+function changeYear(delta) {
+  schoolYear += delta;
+  render();
+}
+
+function showAddKid() {
+  document.getElementById("addKidForm").classList.add("show");
+  document.getElementById("newKidName").focus();
+}
+
+function hideAddKid() {
+  document.getElementById("addKidForm").classList.remove("show");
+  document.getElementById("newKidName").value = "";
+}
+
+function addKid() {
+  const name = document.getElementById("newKidName").value.trim();
+  if (!name) return;
+  const id = Date.now().toString();
+  const colorIndex = state.kids.length % GRADIENTS.length;
+  state.kids.push({ id, name, colorIndex, checks: {} });
+  state.activeKidId = id;
+  save();
+  hideAddKid();
+  render();
+}
+
+function startEdit(kidId, name) {
+  editingKidId = kidId;
+  render();
+  setTimeout(() => {
+    const input = document.getElementById(`editInput_${kidId}`);
+    if (input) input.focus();
+  }, 50);
+}
+
+function cancelEdit() {
+  editingKidId = null;
+  render();
+}
+
+function saveKidName(kidId) {
+  const input = document.getElementById(`editInput_${kidId}`);
+  if (!input || !input.value.trim()) return;
+  const kid = state.kids.find(k => k.id === kidId);
+  if (kid) kid.name = input.value.trim();
+  editingKidId = null;
+  save();
+  render();
+}
+
+function deleteKid(kidId) {
+  state.kids = state.kids.filter(k => k.id !== kidId);
+  if (state.activeKidId === kidId) {
+    state.activeKidId = state.kids.length > 0 ? state.kids[0].id : null;
+  }
+  save();
+  render();
+}
+
+function handleReset() {
+  if (!resetConfirm) {
+    resetConfirm = true;
+    const btn = document.getElementById("resetBtn");
+    btn.textContent = "⚠️ ほんとうにリセット？";
+    btn.classList.add("confirm");
+    document.getElementById("resetCancelBtn").classList.remove("hidden");
+    return;
+  }
+  const kid = getActiveKid();
+  if (kid) {
+    const today = new Date();
+    const dates = getDatesInMonth(today.getFullYear(), today.getMonth()+1);
+    dates.forEach(d => { if (kid.checks) delete kid.checks[d]; });
+    save();
+  }
+  cancelReset();
+  render();
+}
+
+function cancelReset() {
+  resetConfirm = false;
+  const btn = document.getElementById("resetBtn");
+  btn.textContent = "今月のきろくをリセット";
+  btn.classList.remove("confirm");
+  document.getElementById("resetCancelBtn").classList.add("hidden");
+}
+
+// ---- INIT ----
+document.getElementById("addKidOk").onclick = addKid;
+document.getElementById("addKidCancel").onclick = hideAddKid;
+document.getElementById("emptyAddBtn").onclick = showAddKid;
+document.getElementById("newKidName").addEventListener("keydown", e => { if (e.key==="Enter") addKid(); });
+
+load();
+// Set active kid if none selected
+if (!state.activeKidId && state.kids.length > 0) state.activeKidId = state.kids[0].id;
+render();
+</script>
+</body>
+</html>
