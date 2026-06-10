@@ -299,6 +299,16 @@
         <div id="kidList"></div>
         <button class="btn-add-kid" onclick="showAddKid()">＋ こどもをついか</button>
         <div class="divider"></div>
+        <div class="settings-title">💾 バックアップ</div>
+        <p style="font-size:12px;color:#aaa;margin-bottom:12px;">データが消えてしまう前に定期的に保存しておくと安心です。</p>
+        <button class="btn-primary" id="backupBtn" onclick="downloadBackup()" style="background:linear-gradient(135deg,#74c7ec,#89b4fa);margin-bottom:10px;width:100%;display:block;">📤 バックアップを保存</button>
+        <label class="btn-primary" style="background:linear-gradient(135deg,#a6e3a1,#94e2d5);width:100%;display:block;text-align:center;cursor:pointer;border-radius:16px;padding:12px 28px;font-weight:800;font-size:14px;color:white;">
+          📥 バックアップから復元
+          <input type="file" accept=".json" onchange="restoreBackup(event)" style="display:none;">
+        </label>
+        <div id="restoreMsg" style="margin-top:8px;font-size:12px;text-align:center;color:#a6e3a1;display:none;">✅ 復元しました！</div>
+
+        <div class="divider"></div>
         <div class="settings-title">🔄 リセット</div>
         <button class="btn-reset" id="resetBtn" onclick="handleReset()">今月のきろくをリセット</button>
         <button class="btn-cancel hidden" id="resetCancelBtn" onclick="cancelReset()">やめる</button>
@@ -718,6 +728,45 @@ function cancelReset() {
   btn.textContent = "今月のきろくをリセット";
   btn.classList.remove("confirm");
   document.getElementById("resetCancelBtn").classList.add("hidden");
+}
+
+// ---- BACKUP / RESTORE ----
+
+function downloadBackup() {
+  const data = JSON.stringify(state, null, 2);
+  const blob = new Blob([data], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const fname = `otetsudai_backup_${toDateStr(new Date())}.json`;
+  a.href = url;
+  a.download = fname;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function restoreBackup(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (data.kids) {
+        state = data;
+        save();
+        render();
+        const msg = document.getElementById("restoreMsg");
+        msg.style.display = "block";
+        setTimeout(() => { msg.style.display = "none"; }, 3000);
+      } else {
+        alert("このファイルは正しいバックアップファイルではありません。");
+      }
+    } catch {
+      alert("ファイルの読み込みに失敗しました。");
+    }
+    event.target.value = "";
+  };
+  reader.readAsText(file);
 }
 
 // ---- INIT ----
