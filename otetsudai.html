@@ -309,6 +309,28 @@
         <div id="restoreMsg" style="margin-top:8px;font-size:12px;text-align:center;color:#a6e3a1;display:none;">✅ 復元しました！</div>
 
         <div class="divider"></div>
+        <div class="settings-title">📝 おてつだいメニュー</div>
+        <div id="taskList"></div>
+        <button class="btn-add-kid" onclick="showAddTask()">＋ おてつだいをついか</button>
+
+        <div class="add-kid-form" id="addTaskForm" style="margin-top:10px;">
+          <label>📝 おてつだいをついか</label>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <input type="text" id="newTaskEmoji" placeholder="絵文字（例：🧸）" style="padding:10px 14px;border-radius:12px;border:2px solid #f0e0ff;font-family:inherit;font-size:14px;outline:none;">
+            <input type="text" id="newTaskLabel" placeholder="おてつだいの名前" style="padding:10px 14px;border-radius:12px;border:2px solid #f0e0ff;font-family:inherit;font-size:14px;outline:none;">
+            <input type="number" id="newTaskYen" placeholder="金額（円）" style="padding:10px 14px;border-radius:12px;border:2px solid #f0e0ff;font-family:inherit;font-size:14px;outline:none;">
+            <select id="newTaskType" style="padding:10px 14px;border-radius:12px;border:2px solid #f0e0ff;font-family:inherit;font-size:14px;outline:none;">
+              <option value="solo">🌟 ひとりでおてつだい</option>
+              <option value="together">🤝 いっしょにおてつだい</option>
+            </select>
+            <div class="row" style="display:flex;gap:8px;">
+              <button class="btn-ok" style="background:linear-gradient(135deg,#ff8fab,#c77dff);flex:1;" onclick="addTask()">ついかする</button>
+              <button class="btn-cancel" onclick="hideAddTask()">✕</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
         <div class="settings-title">🔄 リセット</div>
         <button class="btn-reset" id="resetBtn" onclick="handleReset()">今月のきろくをリセット</button>
         <button class="btn-cancel hidden" id="resetCancelBtn" onclick="cancelReset()">やめる</button>
@@ -318,7 +340,7 @@
 </div>
 
 <script>
-const TASKS = [
+const DEFAULT_TASKS = [
   { id: 1, emoji: "🛁", label: "おふろそうじ", yen: 30, type: "solo" },
   { id: 2, emoji: "🧹", label: "そうじきをかける", yen: 30, type: "solo" },
   { id: 3, emoji: "🧺", label: "せんたくものをほす", yen: 30, type: "solo" },
@@ -332,6 +354,7 @@ const TASKS = [
   { id: 11, emoji: "👕", label: "せんたくをたたむ", yen: 10, type: "together" },
   { id: 12, emoji: "🧽", label: "おさらをあらう", yen: 10, type: "together" },
 ];
+let TASKS = DEFAULT_TASKS.slice();
 
 const GRADIENTS = [
   ["#ff8fab","#c77dff"],
@@ -350,16 +373,25 @@ let schoolYear = getSchoolYear(new Date());
 let currentTab = "today";
 let resetConfirm = false;
 let editingKidId = null;
+let editingTaskId = null;
 
 function load() {
   try {
     const saved = localStorage.getItem("otetsudai_v3");
     if (saved) state = JSON.parse(saved);
   } catch {}
+  try {
+    const savedTasks = localStorage.getItem("otetsudai_tasks");
+    if (savedTasks) TASKS = JSON.parse(savedTasks);
+  } catch {}
 }
 
 function save() {
   try { localStorage.setItem("otetsudai_v3", JSON.stringify(state)); } catch {}
+}
+
+function saveTasks() {
+  try { localStorage.setItem("otetsudai_tasks", JSON.stringify(TASKS)); } catch {}
 }
 
 function toDateStr(d) {
@@ -597,6 +629,35 @@ function renderSettings(kid, g) {
       </div>
     `;
   }).join("");
+
+  const taskListEl = document.getElementById("taskList");
+  const typeLabel = { solo: "🌟 ひとり", together: "🤝 いっしょ" };
+  taskListEl.innerHTML = TASKS.map(task => {
+    const isEditing = editingTaskId === task.id;
+    if (isEditing) {
+      return `
+        <div class="kid-item" style="flex-wrap:wrap;">
+          <input id="editTaskEmoji_${task.id}" value="${task.emoji}" style="width:44px;padding:6px 8px;border-radius:10px;border:2px solid #f0e0ff;font-family:inherit;font-size:14px;outline:none;text-align:center;">
+          <input id="editTaskLabel_${task.id}" value="${task.label}" style="flex:1;min-width:80px;padding:6px 10px;border-radius:10px;border:2px solid #f0e0ff;font-family:inherit;font-size:13px;outline:none;">
+          <input id="editTaskYen_${task.id}" type="number" value="${task.yen}" style="width:60px;padding:6px 8px;border-radius:10px;border:2px solid #f0e0ff;font-family:inherit;font-size:13px;outline:none;">
+          <select id="editTaskType_${task.id}" style="padding:6px 8px;border-radius:10px;border:2px solid #f0e0ff;font-family:inherit;font-size:12px;outline:none;">
+            <option value="solo" ${task.type==="solo"?"selected":""}>🌟 ひとり</option>
+            <option value="together" ${task.type==="together"?"selected":""}>🤝 いっしょ</option>
+          </select>
+          <button class="btn-ok" style="background:linear-gradient(135deg,${g[0]},${g[1]})" onclick="saveTaskEdit(${task.id})">OK</button>
+          <button class="btn-cancel" onclick="cancelTaskEdit()">✕</button>
+        </div>
+      `;
+    }
+    return `
+      <div class="kid-item">
+        <div class="kid-avatar" style="background:#f0eef8;font-size:16px;">${task.emoji}</div>
+        <span class="kid-name-text">${task.label}　<span style="color:#c77dff;font-weight:800;">¥${task.yen}</span>　<span style="color:#bbb;font-size:11px;">${typeLabel[task.type]}</span></span>
+        <button class="btn-edit" onclick="startTaskEdit(${task.id})">へんしゅう</button>
+        <button class="btn-delete" onclick="deleteTask(${task.id})">✕</button>
+      </div>
+    `;
+  }).join("");
 }
 
 // ---- ACTIONS ----
@@ -637,6 +698,11 @@ function toggleDatePicker() {
 }
 
 function switchTab(tab) {
+  if (tab === "today") {
+    selectedDate = toDateStr(new Date());
+    document.getElementById("dateDropdown").innerHTML = "";
+    document.getElementById("dateDropdown").classList.remove("show");
+  }
   currentTab = tab;
   resetConfirm = false;
   render();
@@ -702,6 +768,67 @@ function deleteKid(kidId) {
   render();
 }
 
+// ---- TASK MANAGEMENT ----
+
+function showAddTask() {
+  document.getElementById("addTaskForm").classList.add("show");
+}
+
+function hideAddTask() {
+  document.getElementById("addTaskForm").classList.remove("show");
+  document.getElementById("newTaskEmoji").value = "";
+  document.getElementById("newTaskLabel").value = "";
+  document.getElementById("newTaskYen").value = "";
+}
+
+function addTask() {
+  const emoji = document.getElementById("newTaskEmoji").value.trim() || "⭐";
+  const label = document.getElementById("newTaskLabel").value.trim();
+  const yen = parseInt(document.getElementById("newTaskYen").value, 10);
+  const type = document.getElementById("newTaskType").value;
+  if (!label || !yen || yen <= 0) {
+    alert("おてつだいの名前と金額を入力してください。");
+    return;
+  }
+  const newId = TASKS.length > 0 ? Math.max(...TASKS.map(t => t.id)) + 1 : 1;
+  TASKS.push({ id: newId, emoji, label, yen, type });
+  saveTasks();
+  hideAddTask();
+  render();
+}
+
+function startTaskEdit(taskId) {
+  editingTaskId = taskId;
+  render();
+}
+
+function cancelTaskEdit() {
+  editingTaskId = null;
+  render();
+}
+
+function saveTaskEdit(taskId) {
+  const emoji = document.getElementById(`editTaskEmoji_${taskId}`).value.trim() || "⭐";
+  const label = document.getElementById(`editTaskLabel_${taskId}`).value.trim();
+  const yen = parseInt(document.getElementById(`editTaskYen_${taskId}`).value, 10);
+  const type = document.getElementById(`editTaskType_${taskId}`).value;
+  if (!label || !yen || yen <= 0) {
+    alert("おてつだいの名前と金額を入力してください。");
+    return;
+  }
+  const task = TASKS.find(t => t.id === taskId);
+  if (task) { task.emoji = emoji; task.label = label; task.yen = yen; task.type = type; }
+  editingTaskId = null;
+  saveTasks();
+  render();
+}
+
+function deleteTask(taskId) {
+  TASKS = TASKS.filter(t => t.id !== taskId);
+  saveTasks();
+  render();
+}
+
 function handleReset() {
   if (!resetConfirm) {
     resetConfirm = true;
@@ -733,7 +860,7 @@ function cancelReset() {
 // ---- BACKUP / RESTORE ----
 
 function downloadBackup() {
-  const data = JSON.stringify(state, null, 2);
+  const data = JSON.stringify({ ...state, _tasks: TASKS }, null, 2);
   const blob = new Blob([data], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -752,7 +879,9 @@ function restoreBackup(event) {
     try {
       const data = JSON.parse(e.target.result);
       if (data.kids) {
-        state = data;
+        const { _tasks, ...rest } = data;
+        state = rest;
+        if (_tasks) { TASKS = _tasks; saveTasks(); }
         save();
         render();
         const msg = document.getElementById("restoreMsg");
