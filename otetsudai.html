@@ -299,11 +299,16 @@
         <div id="kidList"></div>
         <button class="btn-add-kid" onclick="showAddKid()">＋ こどもをついか</button>
         <div class="divider"></div>
+        <div class="settings-title">☁️ クラウド同期</div>
+        <p style="font-size:12px;color:#aaa;margin-bottom:12px;">データは入力のたびに自動でGoogleに保存されます。別の端末で使うときは下のボタンで読み込んでください。</p>
+        <button class="btn-primary" onclick="loadFromCloud()" style="background:linear-gradient(135deg,#74c7ec,#89b4fa);margin-bottom:10px;width:100%;display:block;">☁️ クラウドから復元する</button>
+
+        <div class="divider"></div>
         <div class="settings-title">💾 バックアップ</div>
-        <p style="font-size:12px;color:#aaa;margin-bottom:12px;">データが消えてしまう前に定期的に保存しておくと安心です。</p>
-        <button class="btn-primary" id="backupBtn" onclick="downloadBackup()" style="background:linear-gradient(135deg,#74c7ec,#89b4fa);margin-bottom:10px;width:100%;display:block;">📤 バックアップを保存</button>
+        <p style="font-size:12px;color:#aaa;margin-bottom:12px;">念のためファイルでも保存しておくと安心です。</p>
+        <button class="btn-primary" id="backupBtn" onclick="downloadBackup()" style="background:linear-gradient(135deg,#fab387,#f38ba8);margin-bottom:10px;width:100%;display:block;">📤 ファイルに保存</button>
         <label class="btn-primary" style="background:linear-gradient(135deg,#a6e3a1,#94e2d5);width:100%;display:block;text-align:center;cursor:pointer;border-radius:16px;padding:12px 28px;font-weight:800;font-size:14px;color:white;">
-          📥 バックアップから復元
+          📥 ファイルから復元
           <input type="file" accept=".json" onchange="restoreBackup(event)" style="display:none;">
         </label>
         <div id="restoreMsg" style="margin-top:8px;font-size:12px;text-align:center;color:#a6e3a1;display:none;">✅ 復元しました！</div>
@@ -367,6 +372,8 @@ const GRADIENTS = [
 const SCHOOL_YEAR_MONTHS = [4,5,6,7,8,9,10,11,12,1,2,3];
 const WEEKDAYS = ["日","月","火","水","木","金","土"];
 
+const GAS_URL = "https://script.google.com/macros/s/AKfycbzoTUAjnq7DfLIz4d8Dm-17SNY99RLFx5ynucP8Ksv1ifkCy2d77Q55yV0eapWTPRQH/exec";
+
 let state = { kids: [], activeKidId: null };
 let selectedDate = toDateStr(new Date());
 let schoolYear = getSchoolYear(new Date());
@@ -374,6 +381,7 @@ let currentTab = "today";
 let resetConfirm = false;
 let editingKidId = null;
 let editingTaskId = null;
+let syncTimer = null;
 
 function load() {
   try {
@@ -388,10 +396,59 @@ function load() {
 
 function save() {
   try { localStorage.setItem("otetsudai_v3", JSON.stringify(state)); } catch {}
+  // クラウドへは少し遅らせてまとめて送る（連続タップ対策）
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(syncToCloud, 1500);
 }
 
 function saveTasks() {
   try { localStorage.setItem("otetsudai_tasks", JSON.stringify(TASKS)); } catch {}
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(syncToCloud, 1500);
+}
+
+function syncToCloud() {
+  const payload = { ...state, _tasks: TASKS };
+  fetch(GAS_URL, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  }).catch(() => {}); // エラーは無視（オフラインでも動く）
+}
+
+async function loadFromCloud() {
+  try {
+    showSyncMsg("☁️ クラウドから読み込み中...");
+    const res = await fetch(GAS_URL);
+    const data = await res.json();
+    if (data.status === "empty") {
+      showSyncMsg("クラウドにデータがありません");
+      return;
+    }
+    if (data.kids) {
+      const { _tasks, ...rest } = data;
+      state = rest;
+      if (_tasks) { TASKS = _tasks; saveTasks(); }
+      save();
+      render();
+      showSyncMsg("✅ クラウドから復元しました！");
+    }
+  } catch {
+    showSyncMsg("⚠️ クラウドへの接続に失敗しました");
+  }
+}
+
+function showSyncMsg(msg) {
+  let el = document.getElementById("syncMsg");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "syncMsg";
+    el.style.cssText = "position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#333;color:white;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:700;z-index:9999;pointer-events:none;transition:opacity 0.5s;";
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.style.opacity = "1";
+  clearTimeout(el._timer);
+  el._timer = setTimeout(() => { el.style.opacity = "0"; }, 3000);
 }
 
 function toDateStr(d) {
@@ -1021,9 +1078,27 @@ document.getElementById("emptyAddBtn").onclick = showAddKid;
 document.getElementById("newKidName").addEventListener("keydown", e => { if (e.key==="Enter") addKid(); });
 
 load();
-// Set active kid if none selected
 if (!state.activeKidId && state.kids.length > 0) state.activeKidId = state.kids[0].id;
 render();
+
+// 起動時にクラウドから最新データを取得（ローカルより新しければ上書き）
+(async () => {
+  try {
+    const res = await fetch(GAS_URL);
+    const data = await res.json();
+    if (data.status === "empty" || !data.kids) return;
+    // クラウドのデータをローカルにマージ（クラウド優先）
+    const { _tasks, ...rest } = data;
+    state = rest;
+    if (_tasks) { TASKS = _tasks; saveTasks(); }
+    save();
+    if (!state.activeKidId && state.kids.length > 0) state.activeKidId = state.kids[0].id;
+    render();
+    showSyncMsg("☁️ クラウドから最新データを読み込みました");
+  } catch {
+    // オフラインの場合はローカルデータで動作
+  }
+})();
 </script>
 </body>
 </html>
