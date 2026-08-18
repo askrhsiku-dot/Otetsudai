@@ -503,10 +503,12 @@ function getAvailableDates() {
   const dates = [];
   const today = new Date();
   today.setHours(0,0,0,0);
-  // 1年前から今日まで
+  // 1年前から1ヶ月後まで
   const start = new Date(today);
   start.setFullYear(start.getFullYear() - 1);
-  let cur = new Date(today);
+  const end = new Date(today);
+  end.setMonth(end.getMonth() + 1);
+  let cur = new Date(end);
   while (cur >= start) {
     dates.push(toDateStr(cur));
     cur.setDate(cur.getDate()-1);
@@ -802,7 +804,7 @@ function initSwipe() {
       el.style.transform = `translateX(${dir * -80}px)`;
       el.style.opacity = "0";
       setTimeout(() => {
-        swipeDate(dir * -1);
+        swipeDate(dir); // 逆にする（dir * -1 → dir）
         setTimeout(() => {
           const newEl = document.getElementById("taskArea");
           if (newEl) {
